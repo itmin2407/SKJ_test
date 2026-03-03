@@ -1,0 +1,7 @@
+# 용량 초과 방지를 위한 제외 목록
+models/ko.bin
+models/*.pt
+models/*.pkl
+data/raw/ChatbotData.csv
+__pycache__/
+logs/
