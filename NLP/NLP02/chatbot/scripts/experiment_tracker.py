@@ -11,6 +11,15 @@ import json
 import sys
 from datetime import datetime
 
+try:
+    import matplotlib
+    matplotlib.use('Agg')  # GUI 없는 환경(서버) 대응
+    import matplotlib.pyplot as plt
+    import numpy as np
+    _PLOT_AVAILABLE = True
+except ImportError:
+    _PLOT_AVAILABLE = False
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
@@ -151,7 +160,147 @@ class ExperimentTracker:
         print(f"  JSON: {self.json_path}")
 
         self._print_summary(record, all_prev)
+        self._generate_plots(record, all_new)
         return record
+
+    # ------------------------------------------------------------------
+    # 시각화
+    # ------------------------------------------------------------------
+
+    def _generate_plots(self, record, all_records):
+        """학습 완료 후 3종 그래프를 models/ 에 자동 저장"""
+        if not _PLOT_AVAILABLE:
+            print("[ExperimentTracker] matplotlib 없음 — 그래프 생성 건너뜀")
+            return
+
+        plot_dir = config.MODEL_PATH
+        os.makedirs(plot_dir, exist_ok=True)
+
+        # ── 1. training_loss.png (현재 실험 Train/Val Loss 곡선) ──────
+        self._plot_training_loss(plot_dir)
+
+        # ── 2. experiments_comparison.png (전체 실험 Val Loss 막대) ──
+        self._plot_experiments_comparison(all_records, plot_dir)
+
+        # ── 3. heatmap.png (하이퍼파라미터 vs Val Loss) ──────────────
+        self._plot_heatmap(all_records, plot_dir)
+
+        print(f"[ExperimentTracker] 그래프 저장 완료 → {plot_dir}/")
+
+    def _plot_training_loss(self, plot_dir):
+        """현재 실험의 Train/Val Loss 곡선 — experiments_log.csv 마지막 행 참조"""
+        if not os.path.exists(self.json_path):
+            return
+        try:
+            with open(self.json_path, 'r', encoding='utf-8') as f:
+                all_records = json.load(f)
+        except Exception:
+            return
+
+        # training_results.json 에서 에폭별 loss 읽기
+        results_path = os.path.join(config.MODEL_PATH, 'training_results.json')
+        if not os.path.exists(results_path):
+            return
+        try:
+            with open(results_path, 'r', encoding='utf-8') as f:
+                results = json.load(f)
+        except Exception:
+            return
+
+        train_losses = results.get('train_losses', [])
+        val_losses   = results.get('val_losses', [])
+        if not train_losses:
+            return
+
+        epochs = range(1, len(train_losses) + 1)
+        exp_id = all_records[-1]['experiment_id'] if all_records else '?'
+
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.plot(epochs, train_losses, label='Train Loss', marker='o', markersize=3)
+        ax.plot(epochs, val_losses,   label='Val Loss',   marker='s', markersize=3)
+        best_epoch = results.get('best_val_loss')
+        if best_epoch is not None:
+            ax.axhline(y=best_epoch, color='gray', linestyle='--', linewidth=0.8, label=f'Best Val {best_epoch:.4f}')
+        ax.set_title(f'Experiment #{exp_id} — Train / Val Loss')
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel('Loss')
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+        fig.tight_layout()
+        fig.savefig(os.path.join(plot_dir, 'training_loss.png'), dpi=150)
+        plt.close(fig)
+
+    def _plot_experiments_comparison(self, all_records, plot_dir):
+        """전체 실험 Best Val Loss 막대그래프"""
+        if not all_records:
+            return
+
+        ids   = [r['experiment_id'] for r in all_records]
+        vals  = [r.get('best_val_loss') or 0 for r in all_records]
+        colors = ['steelblue'] * (len(ids) - 1) + ['tomato']  # 최신 실험 강조
+
+        fig, ax = plt.subplots(figsize=(max(6, len(ids) * 0.8 + 2), 5))
+        bars = ax.bar([str(i) for i in ids], vals, color=colors)
+        ax.bar_label(bars, fmt='%.4f', padding=3, fontsize=8)
+        ax.set_title('All Experiments — Best Val Loss')
+        ax.set_xlabel('Experiment #')
+        ax.set_ylabel('Best Val Loss')
+        ax.grid(axis='y', alpha=0.3)
+        fig.tight_layout()
+        fig.savefig(os.path.join(plot_dir, 'experiments_comparison.png'), dpi=150)
+        plt.close(fig)
+
+    def _plot_heatmap(self, all_records, plot_dir):
+        """하이퍼파라미터 vs Val Loss 히트맵"""
+        if not all_records:
+            return
+
+        cols = ['dropout', 'learning_rate', 'epochs', 'best_val_loss']
+        labels = ['Dropout', 'LR', 'Epochs', 'Best Val Loss']
+
+        data = []
+        row_labels = []
+        for r in all_records:
+            row = [r.get(c) for c in cols]
+            if any(v is None for v in row):
+                continue
+            data.append(row)
+            row_labels.append(f"#{r['experiment_id']}")
+
+        if not data:
+            return
+
+        arr = np.array(data, dtype=float)
+        # 열별 min-max 정규화 (시각적 대비를 위해)
+        arr_norm = np.zeros_like(arr)
+        for j in range(arr.shape[1]):
+            col = arr[:, j]
+            mn, mx = col.min(), col.max()
+            arr_norm[:, j] = (col - mn) / (mx - mn) if mx != mn else np.zeros_like(col)
+
+        fig, ax = plt.subplots(figsize=(7, max(3, len(row_labels) * 0.5 + 1.5)))
+        im = ax.imshow(arr_norm, aspect='auto', cmap='RdYlGn_r')
+
+        ax.set_xticks(range(len(labels)))
+        ax.set_xticklabels(labels)
+        ax.set_yticks(range(len(row_labels)))
+        ax.set_yticklabels(row_labels)
+
+        # 셀에 실제 값 표시
+        for i in range(len(row_labels)):
+            for j in range(len(labels)):
+                val = arr[i, j]
+                text = f'{val:.4f}' if j == len(labels) - 1 else (
+                    f'{val:.4f}' if j == 1 else f'{val:.2f}' if j == 0 else f'{int(val)}'
+                )
+                ax.text(j, i, text, ha='center', va='center', fontsize=8,
+                        color='black' if 0.2 < arr_norm[i, j] < 0.8 else 'white')
+
+        ax.set_title('Hyperparameter Heatmap (normalized)')
+        fig.colorbar(im, ax=ax, fraction=0.02, pad=0.04)
+        fig.tight_layout()
+        fig.savefig(os.path.join(plot_dir, 'heatmap.png'), dpi=150)
+        plt.close(fig)
 
     # ------------------------------------------------------------------
     # 터미널 출력
