@@ -18,6 +18,37 @@ mkdir -p "$LOG_DIR"
 
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] 프로젝트 시작" > "$LOG_DIR/pipeline.log"
 
+# ── 하이퍼파라미터 대화형 입력 (파이프라인 시작 직후) ──
+echo ""
+echo "=========================================="
+echo "하이퍼파라미터 설정 (Enter = 기본값 사용)"
+echo "=========================================="
+
+read -p "- 에폭 수 [기본값 20]: " INPUT_EPOCHS
+read -p "- 드롭아웃 [기본값 0.3]: " INPUT_DROPOUT
+read -p "- 러닝레이트 [기본값 0.0005]: " INPUT_LR
+read -p "- 배치 사이즈 [기본값 128]: " INPUT_BATCH
+read -p "- MAX_SEQ_LENGTH [기본값 50]: " INPUT_SEQ
+read -p "- 이어서 학습? (y=이어서, n=새로 시작) [기본값 n]: " INPUT_RESUME
+
+EPOCHS=${INPUT_EPOCHS:-20}
+DROPOUT=${INPUT_DROPOUT:-0.3}
+LR=${INPUT_LR:-0.0005}
+BATCH_SIZE=${INPUT_BATCH:-128}
+MAX_SEQ_LENGTH=${INPUT_SEQ:-50}
+
+if [[ "${INPUT_RESUME,,}" == "y" ]]; then
+    RESUME_VAL="True"
+else
+    RESUME_VAL="False"
+fi
+
+# config.py의 RESUME_TRAINING 값을 직접 교체
+sed -i "s/^RESUME_TRAINING = .*/RESUME_TRAINING = $RESUME_VAL/" config.py
+
+echo ""
+echo "적용 값: EPOCHS=$EPOCHS | DROPOUT=$DROPOUT | LR=$LR | BATCH=$BATCH_SIZE | SEQ=$MAX_SEQ_LENGTH | RESUME=$RESUME_VAL"
+
 # Step 1-2: 데이터 전처리
 echo ""
 echo "=========================================="
@@ -48,39 +79,15 @@ echo "=========================================="
 echo "Step 4: 데이터 증강"
 echo "=========================================="
 
-python scripts/03_augmentation.py 2>&1 | tee -a "$LOG_DIR/augmentation.log"
-echo "[$(date +'%Y-%m-%d %H:%M:%S')] Step 4 완료" >> "$LOG_DIR/pipeline.log"
+AUGMENTED_CSV="data/processed/augmented_data.csv"
 
-# 하이퍼파라미터 대화형 입력
-echo ""
-echo "=========================================="
-echo "하이퍼파라미터 설정 (Enter = 기본값 사용)"
-echo "=========================================="
-
-read -p "- 에폭 수 [기본값 20]: " INPUT_EPOCHS
-read -p "- 드롭아웃 [기본값 0.3]: " INPUT_DROPOUT
-read -p "- 러닝레이트 [기본값 0.0005]: " INPUT_LR
-read -p "- 배치 사이즈 [기본값 128]: " INPUT_BATCH
-read -p "- MAX_SEQ_LENGTH [기본값 50]: " INPUT_SEQ
-read -p "- 이어서 학습? (y=이어서, n=새로 시작) [기본값 n]: " INPUT_RESUME
-
-EPOCHS=${INPUT_EPOCHS:-20}
-DROPOUT=${INPUT_DROPOUT:-0.3}
-LR=${INPUT_LR:-0.0005}
-BATCH_SIZE=${INPUT_BATCH:-128}
-MAX_SEQ_LENGTH=${INPUT_SEQ:-50}
-
-# RESUME_TRAINING: y 입력 시 True, 그 외 False
-if [[ "${INPUT_RESUME,,}" == "y" ]]; then
-    RESUME_VAL="True"
+if [[ "$RESUME_VAL" == "True" ]] && [ -f "$AUGMENTED_CSV" ]; then
+    echo "이어서 학습 모드 + 증강 데이터 존재 → Step 4 건너뜁니다."
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Step 4 건너뜀 (resume)" >> "$LOG_DIR/pipeline.log"
 else
-    RESUME_VAL="False"
+    python scripts/03_augmentation.py 2>&1 | tee -a "$LOG_DIR/augmentation.log"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Step 4 완료" >> "$LOG_DIR/pipeline.log"
 fi
-
-# config.py의 RESUME_TRAINING 값을 직접 교체
-sed -i "s/^RESUME_TRAINING = .*/RESUME_TRAINING = $RESUME_VAL/" config.py
-echo ""
-echo "적용 값: EPOCHS=$EPOCHS | DROPOUT=$DROPOUT | LR=$LR | BATCH=$BATCH_SIZE | SEQ=$MAX_SEQ_LENGTH | RESUME=$RESUME_VAL"
 
 # Step 5-6: 모델 학습
 echo ""
