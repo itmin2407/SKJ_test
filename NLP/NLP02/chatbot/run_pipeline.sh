@@ -48,7 +48,6 @@ echo "=========================================="
 echo "Step 4: 데이터 증강"
 echo "=========================================="
 
-echo "Note: augmentation uses ko.bin; loader will retry binary/text/FastText formats, may skip augmentation if the model is huge or USE_AUGMENTATION=False."
 python scripts/03_augmentation.py 2>&1 | tee -a "$LOG_DIR/augmentation.log"
 echo "[$(date +'%Y-%m-%d %H:%M:%S')] Step 4 완료" >> "$LOG_DIR/pipeline.log"
 
@@ -63,6 +62,7 @@ read -p "- 드롭아웃 [기본값 0.3]: " INPUT_DROPOUT
 read -p "- 러닝레이트 [기본값 0.0005]: " INPUT_LR
 read -p "- 배치 사이즈 [기본값 128]: " INPUT_BATCH
 read -p "- MAX_SEQ_LENGTH [기본값 50]: " INPUT_SEQ
+read -p "- 이어서 학습? (y=이어서, n=새로 시작) [기본값 n]: " INPUT_RESUME
 
 EPOCHS=${INPUT_EPOCHS:-20}
 DROPOUT=${INPUT_DROPOUT:-0.3}
@@ -70,8 +70,17 @@ LR=${INPUT_LR:-0.0005}
 BATCH_SIZE=${INPUT_BATCH:-128}
 MAX_SEQ_LENGTH=${INPUT_SEQ:-50}
 
+# RESUME_TRAINING: y 입력 시 True, 그 외 False
+if [[ "${INPUT_RESUME,,}" == "y" ]]; then
+    RESUME_VAL="True"
+else
+    RESUME_VAL="False"
+fi
+
+# config.py의 RESUME_TRAINING 값을 직접 교체
+sed -i "s/^RESUME_TRAINING = .*/RESUME_TRAINING = $RESUME_VAL/" config.py
 echo ""
-echo "적용 값: EPOCHS=$EPOCHS | DROPOUT=$DROPOUT | LR=$LR | BATCH=$BATCH_SIZE | SEQ=$MAX_SEQ_LENGTH"
+echo "적용 값: EPOCHS=$EPOCHS | DROPOUT=$DROPOUT | LR=$LR | BATCH=$BATCH_SIZE | SEQ=$MAX_SEQ_LENGTH | RESUME=$RESUME_VAL"
 
 # Step 5-6: 모델 학습
 echo ""
