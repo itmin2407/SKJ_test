@@ -21,6 +21,7 @@ import json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+from scripts.experiment_tracker import ExperimentTracker
 
 # 디바이스 설정
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -155,16 +156,17 @@ class TransformerChatbot(nn.Module):
         pe = pe.unsqueeze(0)
         return pe
     
-    def forward(self, src, tgt, src_key_padding_mask=None, tgt_key_padding_mask=None):
+    def forward(self, src, tgt, src_key_padding_mask=None, tgt_key_padding_mask=None, tgt_mask=None):
         """
         Forward pass
-        
+
         Args:
             src (Tensor): 인코더 입력 (batch_size, seq_len)
             tgt (Tensor): 디코더 입력 (batch_size, seq_len)
             src_key_padding_mask (Tensor): 소스 패딩 마스크
             tgt_key_padding_mask (Tensor): 타겟 패딩 마스크
-            
+            tgt_mask (Tensor): 디코더 causal mask (look-ahead mask)
+
         Returns:
             Tensor: 출력 (batch_size, seq_len, vocab_size)
         """
@@ -190,6 +192,7 @@ class TransformerChatbot(nn.Module):
         decoder_output = self.transformer_decoder(
             tgt_emb,
             encoder_output,
+            tgt_mask=tgt_mask,
             tgt_key_padding_mask=tgt_key_padding_mask
         )
         
@@ -213,62 +216,84 @@ class Tokenizer:
         print(f"✓ Tokenizer saved to {path}")
 
 def create_vocab_from_corpus(corpus_path):
-    """코퍼스에서 어휘 생성"""
+    """코퍼스에서 어휘와 메타데이터 반환"""
     with open(corpus_path, 'rb') as f:
         corpus_data = pickle.load(f)
-    
-    return corpus_data['word2idx']
+    word2idx = corpus_data['word2idx']
+    tokenizer_name = corpus_data.get('tokenizer_name', 'unknown')
+    return word2idx, tokenizer_name
 
-def train_epoch(model, dataloader, optimizer, criterion, device):
+def train_epoch(model, dataloader, optimizer, criterion, device, scheduler=None):
     """한 에포크 학습"""
     model.train()
     total_loss = 0
-    
+
     progress_bar = tqdm(dataloader, desc="Training")
     for batch in progress_bar:
         # 데이터 로드
         src = batch['question'].to(device)
         tgt = batch['answer'].to(device)
-        
+
         # 패딩 마스크 생성
         src_padding_mask = (src == 0)
         tgt_padding_mask = (tgt == 0)
-        
+
+        # Causal mask: 디코더가 미래 토큰을 보지 못하게 함
+        tgt_len = tgt.size(1)
+        tgt_causal_mask = nn.Transformer.generate_square_subsequent_mask(tgt_len).to(device)
+
         # Forward pass
-        output = model(src, tgt, src_key_padding_mask=src_padding_mask, tgt_key_padding_mask=tgt_padding_mask)
-        
+        output = model(
+            src, tgt,
+            src_key_padding_mask=src_padding_mask,
+            tgt_key_padding_mask=tgt_padding_mask,
+            tgt_mask=tgt_causal_mask
+        )
+
         # loss 계산 (패딩 토큰 제외)
         loss = criterion(output.view(-1, output.size(-1)), tgt.view(-1))
-        
+
         # Backward pass
         optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
-        
+
+        # OneCycleLR은 배치마다 step() 호출해야 함
+        if scheduler is not None:
+            scheduler.step()
+
         total_loss += loss.item()
         progress_bar.set_postfix({'loss': loss.item()})
-    
+
     return total_loss / len(dataloader)
 
 def validate(model, dataloader, criterion, device):
     """검증"""
     model.eval()
     total_loss = 0
-    
+
     with torch.no_grad():
         for batch in dataloader:
             src = batch['question'].to(device)
             tgt = batch['answer'].to(device)
-            
+
             src_padding_mask = (src == 0)
             tgt_padding_mask = (tgt == 0)
-            
-            output = model(src, tgt, src_key_padding_mask=src_padding_mask, tgt_key_padding_mask=tgt_padding_mask)
+
+            tgt_len = tgt.size(1)
+            tgt_causal_mask = nn.Transformer.generate_square_subsequent_mask(tgt_len).to(device)
+
+            output = model(
+                src, tgt,
+                src_key_padding_mask=src_padding_mask,
+                tgt_key_padding_mask=tgt_padding_mask,
+                tgt_mask=tgt_causal_mask
+            )
             loss = criterion(output.view(-1, output.size(-1)), tgt.view(-1))
-            
+
             total_loss += loss.item()
-    
+
     return total_loss / len(dataloader)
 
 def main():
@@ -286,16 +311,25 @@ def main():
     print(f"\nLoading augmented data from {config.AUGMENTED_CSV}...")
     df = pd.read_csv(config.AUGMENTED_CSV)
     print(f"✓ Loaded {len(df)} sentences")
-    
+
+    # 원본 데이터 크기 (증강 전)
+    original_data_size = None
+    if os.path.exists(config.CLEANED_CSV):
+        original_data_size = len(pd.read_csv(config.CLEANED_CSV))
+    augmented_data_size = len(df)
+
     # 어휘 로드
     if not os.path.exists(config.CORPUS_PKL):
         print(f"✗ Error: Corpus not found")
         print("Please run 02_build_corpus.py first")
         return
-    
+
     print(f"Loading vocabulary from corpus...")
-    vocab = create_vocab_from_corpus(config.CORPUS_PKL)
-    print(f"✓ Vocabulary size: {len(vocab)}")
+    vocab, tokenizer_name = create_vocab_from_corpus(config.CORPUS_PKL)
+    print(f"✓ Vocabulary size: {len(vocab)}  (tokenizer: {tokenizer_name})")
+
+    # 실험 추적기 초기화
+    tracker = ExperimentTracker()
     
     # 데이터셋 및 데이터로더 생성
     print(f"\nCreating dataset...")
@@ -352,29 +386,28 @@ def main():
     print(f"Epochs: {config.EPOCHS}")
     
     best_val_loss = float('inf')
+    best_epoch = 1
     train_losses = []
     val_losses = []
-    
+
     for epoch in range(config.EPOCHS):
         print(f"\n[Epoch {epoch + 1}/{config.EPOCHS}]")
-        
-        # 훈련
-        train_loss = train_epoch(model, train_loader, optimizer, criterion, device)
+
+        # 훈련 (scheduler는 train_epoch 내부에서 배치마다 step 호출)
+        train_loss = train_epoch(model, train_loader, optimizer, criterion, device, scheduler)
         train_losses.append(train_loss)
-        
+
         # 검증
         val_loss = validate(model, val_loader, criterion, device)
         val_losses.append(val_loss)
-        
+
         print(f"Train Loss: {train_loss:.4f}")
         print(f"Validation Loss: {val_loss:.4f}")
-        
-        # 스케줄러 업데이트
-        scheduler.step()
-        
+
         # 최고 성능 모델 저장
         if val_loss < best_val_loss:
             best_val_loss = val_loss
+            best_epoch = epoch + 1
             os.makedirs(os.path.dirname(config.MODEL_SAVE_PATH), exist_ok=True)
             torch.save(model.state_dict(), config.MODEL_SAVE_PATH)
             print(f"✓ Best model saved (val_loss: {val_loss:.4f})")
@@ -398,7 +431,17 @@ def main():
     # 토크나이저 저장
     tokenizer = Tokenizer(vocab)
     tokenizer.save(config.TOKENIZER_PATH)
-    
+
+    # 실험 기록 저장 및 비교 출력
+    tracker.save(
+        train_losses=train_losses,
+        val_losses=val_losses,
+        best_epoch=best_epoch,
+        tokenizer_name=tokenizer_name,
+        original_data_size=original_data_size,
+        augmented_data_size=augmented_data_size,
+    )
+
     print(f"\n✓ Training completed successfully!")
     print(f"✓ Model saved to {config.MODEL_SAVE_PATH}")
     print(f"✓ Results saved to {results_path}")

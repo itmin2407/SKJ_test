@@ -9,7 +9,6 @@ import pandas as pd
 import pickle
 import os
 import sys
-from konlpy.tag import Mecab
 from collections import Counter, defaultdict
 from tqdm import tqdm
 
@@ -21,15 +20,33 @@ class CorpusBuilder:
     
     def __init__(self):
         """초기화"""
-        print("Loading Mecab...")
+        self._tokenizer_obj = None
+        self.tokenizer_name = None
+
+        # 1) Mecab 시도
         try:
-            self.mecab = Mecab()
+            from konlpy.tag import Mecab
+            self._tokenizer_obj = Mecab()
+            self.tokenizer_name = 'Mecab'
             print("✓ Mecab loaded successfully")
         except Exception as e:
-            print(f"✗ Error loading Mecab: {e}")
-            print("Please install Mecab: apt-get install mecab mecab-ko mecab-ko-dic")
-            raise
-        
+            print(f"✗ Mecab not available: {e}")
+
+        # 2) Okt fallback
+        if self._tokenizer_obj is None:
+            try:
+                from konlpy.tag import Okt
+                self._tokenizer_obj = Okt()
+                self.tokenizer_name = 'Okt'
+                print("✓ Okt loaded as fallback tokenizer")
+            except Exception as e:
+                print(f"✗ Okt not available: {e}")
+
+        # 3) whitespace fallback
+        if self._tokenizer_obj is None:
+            print("⚠️ Using whitespace tokenizer as fallback")
+            self.tokenizer_name = 'whitespace'
+
         self.word_freq = Counter()
         self.word2idx = {'<pad>': 0, '<unk>': 1, '<start>': 2, '<end>': 3}
         self.idx2word = {v: k for k, v in self.word2idx.items()}
@@ -38,20 +55,20 @@ class CorpusBuilder:
     
     def tokenize(self, sentence):
         """
-        Mecab을 사용하여 문장을 형태소로 분석
-        
+        형태소 분석기(Mecab/Okt/whitespace)를 사용하여 문장을 형태소로 분석
+
         Args:
             sentence (str): 분석할 문장
-            
+
         Returns:
             list: 형태소 리스트
         """
         try:
-            tokens = self.mecab.morphs(sentence)
-            return tokens
+            if self.tokenizer_name == 'whitespace':
+                return sentence.split()
+            return self._tokenizer_obj.morphs(sentence)
         except Exception as e:
-            print(f"Error tokenizing '{sentence}': {e}")
-            return []
+            return sentence.split()
     
     def build_vocabulary(self, df, min_freq=2, max_vocab_size=None):
         """
@@ -168,6 +185,7 @@ class CorpusBuilder:
             'word2idx': self.word2idx,
             'idx2word': self.idx2word,
             'word_freq': dict(self.word_freq),
+            'tokenizer_name': self.tokenizer_name,
         }
         
         with open(output_path, 'wb') as f:
