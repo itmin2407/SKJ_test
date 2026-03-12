@@ -78,9 +78,12 @@ def main():
 
     # 토크나이저 + 모델 로드 (HuggingFace pretrained)
     tokenizer = PreTrainedTokenizerFast.from_pretrained(cfg.BASE_MODEL_NAME)
-    tokenizer.pad_token = tokenizer.eos_token   # KoGPT2는 pad_token 없음
+    tokenizer.add_special_tokens({'pad_token': '[PAD]',
+                                  'eos_token': '</s>',
+                                  'bos_token': '<s>'})
 
     model = GPT2LMHeadModel.from_pretrained(cfg.BASE_MODEL_NAME)
+    model.resize_token_embeddings(len(tokenizer))
     model.to(device)
 
     # 데이터셋
