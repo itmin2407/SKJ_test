@@ -126,6 +126,7 @@ def main():
 
     tokenizer = PreTrainedTokenizerFast.from_pretrained(cfg.SFT_SAVE_PATH)
     tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = 'left'
 
     # Policy model: SFT 모델에서 시작, 업데이트됨
     policy_model = GPT2LMHeadModel.from_pretrained(cfg.SFT_SAVE_PATH).to(device)
