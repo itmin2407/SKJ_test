@@ -24,19 +24,23 @@ class SFTDataset(Dataset):
     """
     def __init__(self, path, tokenizer, max_len):
         self.samples = []
+        self.data = []
         with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                item = json.loads(line)
-                # prompt와 completion을 하나의 시퀀스로 연결
-                text = item["prompt"] + item["completion"]
-                enc  = tokenizer(text,
-                                 truncation=True,
-                                 max_length=max_len,
-                                 padding="max_length",
-                                 return_tensors="pt")
-                input_ids = enc["input_ids"].squeeze()
-                # GPT LM: labels = input_ids 그대로 (shift는 모델 내부에서 처리)
-                self.samples.append({"input_ids": input_ids, "labels": input_ids.clone()})
+            raw = json.load(f)
+        for item in raw:
+            prompt = item["prompt"]
+            completion = item["completion"]
+            text = prompt + completion
+            self.data.append(text)
+        for text in self.data:
+            enc  = tokenizer(text,
+                             truncation=True,
+                             max_length=max_len,
+                             padding="max_length",
+                             return_tensors="pt")
+            input_ids = enc["input_ids"].squeeze()
+            # GPT LM: labels = input_ids 그대로 (shift는 모델 내부에서 처리)
+            self.samples.append({"input_ids": input_ids, "labels": input_ids.clone()})
 
     def __len__(self):
         return len(self.samples)
