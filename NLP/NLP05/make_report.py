@@ -5,7 +5,10 @@ RunPod에서 실행: python /workspace/test/NLP/NLP05/make_report.py
 import sys
 sys.path.insert(0, '/workspace/test/NLP/NLP05')
 
-NOTEBOOK_NAME = sys.argv[1] if len(sys.argv) > 1 else 'NLP05'
+import glob
+existing = glob.glob('/workspace/test/NLP/NLP05/RLHF_test*.ipynb')
+next_num = len(existing) + 1
+NOTEBOOK_NAME = f'RLHF_test{next_num:02d}'
 NOTEBOOK_PATH = f'/workspace/test/NLP/NLP05/{NOTEBOOK_NAME}.ipynb'
 
 import json
