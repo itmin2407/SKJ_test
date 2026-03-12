@@ -53,8 +53,8 @@ class RMDataset(Dataset):
         self.max_len   = max_len
 
         with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                item = json.loads(line)
+            raw = json.load(f)
+        for item in raw:
                 prompt = item["prompt"]
 
                 # 포맷 A: chosen/rejected 키가 있는 경우
