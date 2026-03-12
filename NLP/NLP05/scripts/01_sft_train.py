@@ -1,3 +1,6 @@
+import sys
+sys.path.insert(0, '/workspace/test/NLP/NLP05')
+
 import os, sys, json, random
 import torch
 from torch.utils.data import Dataset, DataLoader
