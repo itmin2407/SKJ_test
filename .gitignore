@@ -5,3 +5,4 @@ models/*.pkl
 data/raw/ChatbotData.csv
 __pycache__/
 logs/
+LLM_Application/LLM01/data/
