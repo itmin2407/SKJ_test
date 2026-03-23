@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BabyCoach 🌸</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #fff8f3;
+      --card: #ffffff;
+      --text: #3d2c1e;
+      --muted: #9b7e6e;
+      --point: #ff8c69;
+      --point2: #ffb347;
+      --border: rgba(255,140,105,.22);
+      --border-dot: rgba(255,140,105,.35);
+      --shadow: 0 8px 28px rgba(255,140,105,.13);
+      --radius: 22px;
+      --radius-sm: 14px;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Nunito', 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(600px 400px at 10% 5%,  rgba(255,179,71,.15),  transparent 60%),
+        radial-gradient(500px 350px at 90% 15%, rgba(255,140,105,.13), transparent 55%),
+        radial-gradient(400px 300px at 50% 90%, rgba(255,214,197,.20), transparent 60%);
+    }
+    .wrap {
+      position: relative; z-index: 1;
+      max-width: 480px; margin: 0 auto;
+      padding: 18px 16px 40px;
+      min-height: 100vh;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+
+    /* ── 헤더 ── */
+    .header {
+      background: rgba(255,255,255,.88);
+      border: 1.5px solid rgba(255,140,105,.28);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px 18px;
+      display: flex; align-items: center; gap: 12px;
+      backdrop-filter: blur(8px);
+    }
+    .logo-emoji { font-size: 30px; line-height: 1; }
+    .titlebox .t1 { font-weight: 900; font-size: 17px; color: var(--point); }
+    .titlebox .t2 { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── 텍스트 스텝 표시 ── */
+    .step-indicator {
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,.80);
+      border: 1.5px solid var(--border);
+      border-radius: 999px;
+      padding: 10px 18px;
+      box-shadow: 0 2px 10px rgba(255,140,105,.09);
+    }
+    .step-text {
+      font-size: 14px; font-weight: 900; color: var(--point);
+    }
+    .step-dots { display: flex; gap: 6px; align-items: center; }
+    .step-dot-sm {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,140,105,.20);
+      transition: all .3s;
+    }
+    .step-dot-sm.active {
+      background: var(--point);
+      width: 20px; border-radius: 999px;
+    }
+    .step-dot-sm.done { background: rgba(255,140,105,.55); }
+
+    /* ── SVG 캐릭터 영역 ── */
+    .char-wrap {
+      display: flex; justify-content: center; align-items: center;
+      padding: 6px 0 2px;
+    }
+
+    /* ── 섹션 카드 ── */
+    .section {
+      background: rgba(255,255,255,.88);
+      border: 1.5px dashed var(--border-dot);
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      box-shadow: var(--shadow);
+    }
+    .section-title {
+      font-weight: 900; font-size: 15px; color: var(--text);
+      margin: 0 0 14px;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    /* ── 대화체 질문 ── */
+    .q-label {
+      font-size: 14px; font-weight: 800; color: var(--text);
+      margin-bottom: 8px; line-height: 1.4;
+    }
+
+    /* ── 스텝퍼 ── */
+    .stepper-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #fff7f3; border: 1.5px solid rgba(255,140,105,.20);
+      border-radius: var(--radius); padding: 10px 14px; margin-bottom: 10px;
+    }
+    .stepper-label { font-size: 12px; font-weight: 700; color: var(--muted); }
+    .stepper-value { font-size: 22px; font-weight: 900; color: var(--point); min-width: 48px; text-align: center; }
+    .stepper-unit  { font-size: 11px; font-weight: 700; color: var(--muted); }
+    .stepper-ctrl  { display: flex; align-items: center; gap: 8px; }
+    .step-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1.5px solid rgba(255,140,105,.40);
+      background: rgba(255,140,105,.10);
+      color: var(--point); font-size: 18px; font-weight: 900;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all .2s; touch-action: manipulation;
+    }
+    .step-btn:hover { background: rgba(255,140,105,.22); transform: scale(1.12); }
+    .step-btn:active { transform: scale(.95); }
+
+    /* ── Pill ── */
+    .pill-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      border: 1.5px solid rgba(255,140,105,.28);
+      background: rgba(255,140,105,.08);
+      border-radius: 999px; padding: 8px 14px;
+      font-size: 13px; font-weight: 700; color: var(--text);
+      cursor: pointer; user-select: none;
+      transition: all .2s; touch-action: manipulation;
+    }
+    .pill:hover { transform: scale(1.05); background: rgba(255,140,105,.15); }
+    .pill.active {
+      background: linear-gradient(90deg, rgba(255,140,105,.25), rgba(255,179,71,.18));
+      border-color: var(--point); color: #c9502b;
+    }
+
+    /* ── 큰 카드 선택지 ── */
+    .choice-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .choice-card {
+      border: 1.5px solid rgba(255,140,105,.25);
+      background: rgba(255,255,255,.80);
+      border-radius: var(--radius-sm);
+      padding: 12px 8px; text-align: center;
+      cursor: pointer; transition: all .22s; touch-action: manipulation;
+    }
+    .choice-card .c-emoji { font-size: 22px; display: block; margin-bottom: 4px; }
+    .choice-card .c-label { font-size: 11px; font-weight: 800; color: var(--muted); line-height: 1.3; }
+    .choice-card:hover { transform: translateY(-3px) scale(1.04); box-shadow: 0 6px 18px rgba(255,140,105,.18); }
+    .choice-card.active {
+      background: linear-gradient(135deg, rgba(255,140,105,.18), rgba(255,179,71,.14));
+      border-color: var(--point);
+      box-shadow: 0 4px 14px rgba(255,140,105,.25);
+    }
+    .choice-card.active .c-label { color: #c9502b; }
+
+    .subsec { margin-top: 14px; }
+
+    /* ── 입력 ── */
+    textarea, input[type="text"] {
+      width: 100%; padding: 12px 14px;
+      background: #fff7f3; color: var(--text);
+      border: 1.5px solid rgba(255,140,105,.25);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 13px; font-weight: 600;
+      resize: vertical; outline: none;
+      transition: border-color .2s;
+    }
+    textarea:focus, input[type="text"]:focus {
+      border-color: var(--point);
+      box-shadow: 0 0 0 3px rgba(255,140,105,.12);
+    }
+    textarea { min-height: 70px; }
+
+    /* ── 버튼 ── */
+    .btn {
+      width: 100%; padding: 15px;
+      border-radius: var(--radius); border: 1.5px solid rgba(255,140,105,.50);
+      background: rgba(255,140,105,.12);
+      color: var(--text); font-family: 'Nunito', sans-serif;
+      font-size: 15px; font-weight: 900;
+      cursor: pointer; min-height: 50px;
+      transition: all .2s; touch-action: manipulation;
+    }
+    .btn:hover { transform: scale(1.03); box-shadow: 0 6px 20px rgba(255,140,105,.22); }
+    .btn:active { transform: scale(.97); }
+    .btn.primary {
+      background: linear-gradient(135deg, #ff8c69, #ffb347);
+      border-color: transparent; color: #fff;
+      box-shadow: 0 6px 20px rgba(255,140,105,.35);
+    }
+    .btn.primary:hover { box-shadow: 0 8px 26px rgba(255,140,105,.50); }
+    .btn.ghost {
+      background: transparent;
+      border-color: rgba(255,140,105,.30);
+      color: var(--muted);
+    }
+    .btn:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
+    .btn-row { display: flex; gap: 10px; }
+    .btn-row .btn { flex: 1; }
+
+    /* ── 로딩 ── */
+    .loading-overlay {
+      display: none; position: fixed; inset: 0; z-index: 100;
+      background: rgba(255,248,243,.88);
+      backdrop-filter: blur(6px);
+      align-items: center; justify-content: center;
+      flex-direction: column; gap: 14px;
+    }
+    .loading-overlay.show { display: flex; }
+    .loading-spinner {
+      width: 54px; height: 54px;
+      border: 4px solid rgba(255,140,105,.20);
+      border-top-color: var(--point);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 16px; font-weight: 800; color: var(--point); }
+    .loading-sub  { font-size: 12px; color: var(--muted); }
+
+    /* ── 결과 카드 ── */
+    .nudge-banner {
+      background: linear-gradient(135deg, rgba(255,140,105,.18), rgba(255,179,71,.14));
+      border: 1.5px solid rgba(255,140,105,.35);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .nudge-icon  { font-size: 26px; flex-shrink: 0; }
+    .nudge-title { font-size: 12px; font-weight: 800; color: var(--point); margin-bottom: 4px; }
+    .nudge-msg   { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.5; }
+    .nudge-empty { font-size: 13px; font-weight: 600; color: var(--muted); }
+
+    .result-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .result-card {
+      border-radius: var(--radius); padding: 14px;
+      border: 1.5px dashed rgba(0,0,0,.08);
+    }
+    /* 카드별 파스텔 배경 */
+    .result-card.spoon   { background: linear-gradient(135deg, #e8f8e8, #d4f5d4); }
+    .result-card.play    { background: linear-gradient(135deg, #e8f0ff, #d4e4ff); }
+    .result-card.growth  { background: linear-gradient(135deg, #f0e8ff, #e4d4ff); }
+    .result-card.explain { background: linear-gradient(135deg, #fff8e8, #fff0d4); }
+    .rc-head  { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .rc-icon  { font-size: 20px; }
+    .rc-title { font-size: 12px; font-weight: 900; color: var(--text); }
+    .rc-body  { font-size: 12px; font-weight: 600; color: #5a4a3a; line-height: 1.55; }
+    .rc-body strong { color: var(--text); font-weight: 800; }
+
+    /* ── 에러 ── */
+    .error-box {
+      display: none;
+      background: rgba(255,80,80,.08);
+      border: 1.5px solid rgba(255,80,80,.30);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 13px; font-weight: 700; color: #c0392b;
+    }
+    .error-box.show { display: block; }
+
+    /* ── 페이지 전환 ── */
+    .page { display: none; }
+    .page.active { display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── 완료 배너 ── */
+    .done-banner {
+      text-align: center;
+      background: linear-gradient(135deg, rgba(255,140,105,.12), rgba(255,179,71,.10));
+      border: 1.5px solid rgba(255,140,105,.28);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .done-banner .done-title { font-size: 18px; font-weight: 900; color: var(--point); margin-top: 8px; }
+    .done-banner .done-sub   { font-size: 13px; font-weight: 600; color: var(--muted); margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- 로딩 -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">코칭 준비 중이에요 🌸</div>
+  <div class="loading-sub">아기를 위한 맞춤 추천을 만들고 있어요</div>
+</div>
+
+<div class="wrap">
+
+  <!-- 헤더 -->
+  <div class="header">
+    <div class="logo-emoji">🍼</div>
+    <div class="titlebox">
+      <div class="t1">BabyCoach</div>
+      <div class="t2">우리 아기 맞춤 육아 코칭 🌸</div>
+    </div>
+  </div>
+
+  <!-- 텍스트 스텝 표시 -->
+  <div class="step-indicator">
+    <div class="step-text" id="stepText">1/3 &nbsp;아기 정보 👶</div>
+    <div class="step-dots">
+      <div class="step-dot-sm active" id="sd1"></div>
+      <div class="step-dot-sm" id="sd2"></div>
+      <div class="step-dot-sm" id="sd3"></div>
+    </div>
+  </div>
+
+  <!-- ════ STEP 1 ════ -->
+  <div class="page active" id="page1">
+
+    <!-- SVG 캐릭터: 아기 얼굴 -->
+    <div class="char-wrap">
+      <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- 배경 원 -->
+        <circle cx="60" cy="60" r="56" fill="#fff0e8"/>
+        <!-- 얼굴 -->
+        <ellipse cx="60" cy="64" rx="34" ry="32" fill="#ffd8b0"/>
+        <!-- 귀 -->
+        <ellipse cx="27" cy="64" rx="7" ry="8" fill="#ffd8b0"/>
+        <ellipse cx="93" cy="64" rx="7" ry="8" fill="#ffd8b0"/>
+        <!-- 귀 안 -->
+        <ellipse cx="27" cy="64" rx="4" ry="5" fill="#ffb38a"/>
+        <ellipse cx="93" cy="64" rx="4" ry="5" fill="#ffb38a"/>
+        <!-- 머리카락 -->
+        <ellipse cx="60" cy="35" rx="26" ry="14" fill="#5c3d1e"/>
+        <ellipse cx="40" cy="38" rx="10" ry="8" fill="#5c3d1e"/>
+        <ellipse cx="80" cy="38" rx="10" ry="8" fill="#5c3d1e"/>
+        <!-- 눈 -->
+        <ellipse cx="48" cy="60" rx="5" ry="5.5" fill="#3d2c1e"/>
+        <ellipse cx="72" cy="60" rx="5" ry="5.5" fill="#3d2c1e"/>
+        <!-- 눈 하이라이트 -->
+        <circle cx="50" cy="58" r="1.8" fill="#fff"/>
+        <circle cx="74" cy="58" r="1.8" fill="#fff"/>
+        <!-- 볼 치크 -->
+        <ellipse cx="40" cy="70" rx="9" ry="6" fill="#ffb0a0" opacity=".55"/>
+        <ellipse cx="80" cy="70" rx="9" ry="6" fill="#ffb0a0" opacity=".55"/>
+        <!-- 코 -->
+        <ellipse cx="60" cy="68" rx="3.5" ry="2.5" fill="#e8956a"/>
+        <!-- 입 (미소) -->
+        <path d="M50 76 Q60 84 70 76" stroke="#c06040" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <!-- 머리 위 왕관/장식 -->
+        <circle cx="60" cy="16" r="5" fill="#ffb347"/>
+        <circle cx="60" cy="16" r="2.5" fill="#ff8c69"/>
+      </svg>
+    </div>
+
+    <div class="section">
+      <div class="section-title">👶 아기 기본 정보를 알려주세요!</div>
+
+      <div class="q-label">몇 개월이에요? 🍼</div>
+      <div class="stepper-row">
+        <div>
+          <div class="stepper-label">개월 수</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="stepper-value" id="valAge">6</span>
+            <span class="stepper-unit">개월</span>
+          </div>
+        </div>
+        <div class="stepper-ctrl">
+          <button class="step-btn" onclick="stepAge(-1)">−</button>
+          <button class="step-btn" onclick="stepAge(1)">+</button>
+        </div>
+      </div>
+
+      <div class="q-label">몸무게는 얼마예요? ⚖️</div>
+      <div class="stepper-row">
+        <div>
+          <div class="stepper-label">체중</div>
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="stepper-value" id="valWeight">7.5</span>
+            <span class="stepper-unit">kg</span>
+          </div>
+        </div>
+        <div class="stepper-ctrl">
+          <button class="step-btn" onclick="stepWeight(-1)">−</button>
+          <button class="step-btn" onclick="stepWeight(1)">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🚫 알레르기가 있나요?</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600;">해당하는 항목을 모두 눌러주세요</div>
+      <div class="pill-group" id="allergyPills">
+        <div class="pill" data-v="우유">🥛 우유</div>
+        <div class="pill" data-v="달걀">🥚 달걀</div>
+        <div class="pill" data-v="땅콩">🥜 땅콩</div>
+        <div class="pill" data-v="밀">🌾 밀</div>
+        <div class="pill" data-v="콩">🫘 콩</div>
+        <div class="pill" data-v="새우">🍤 새우</div>
+        <div class="pill" data-v="게">🦀 게</div>
+        <div class="pill" data-v="나무열매">🌰 나무열매</div>
+        <div class="pill" data-v="없음">✅ 없음</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">📝 특이사항이 있나요?</div>
+      <textarea id="inputNotes" placeholder="오늘 아기 상태, 특이한 점이 있으면 적어주세요 (선택)"></textarea>
+    </div>
+
+    <button class="btn primary" onclick="goStep(2)">다음으로 → 🌼</button>
+  </div>
+
+  <!-- ════ STEP 2 ════ -->
+  <div class="page" id="page2">
+
+    <!-- SVG 캐릭터: 숟가락 들고 밥 먹는 아기 -->
+    <div class="char-wrap">
+      <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- 배경 원 -->
+        <circle cx="60" cy="60" r="56" fill="#fff0e8"/>
+        <!-- 몸통 -->
+        <ellipse cx="60" cy="88" rx="22" ry="16" fill="#a8d8ff"/>
+        <!-- 턱받이 -->
+        <path d="M44 80 Q60 92 76 80 Q72 96 60 98 Q48 96 44 80Z" fill="#ff8c69" opacity=".7"/>
+        <path d="M52 83 Q60 87 68 83" stroke="#fff" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <!-- 얼굴 -->
+        <ellipse cx="60" cy="58" rx="26" ry="25" fill="#ffd8b0"/>
+        <!-- 귀 -->
+        <ellipse cx="35" cy="58" rx="6" ry="7" fill="#ffd8b0"/>
+        <ellipse cx="85" cy="58" rx="6" ry="7" fill="#ffd8b0"/>
+        <!-- 귀 안 -->
+        <ellipse cx="35" cy="58" rx="3.5" ry="4.5" fill="#ffb38a"/>
+        <ellipse cx="85" cy="58" rx="3.5" ry="4.5" fill="#ffb38a"/>
+        <!-- 머리카락 -->
+        <ellipse cx="60" cy="36" rx="22" ry="12" fill="#5c3d1e"/>
+        <!-- 눈 (먹는 중 — 반달 눈) -->
+        <path d="M50 53 Q53 49 56 53" stroke="#3d2c1e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M64 53 Q67 49 70 53" stroke="#3d2c1e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <!-- 볼 치크 -->
+        <ellipse cx="42" cy="62" rx="8" ry="5.5" fill="#ffb0a0" opacity=".60"/>
+        <ellipse cx="78" cy="62" rx="8" ry="5.5" fill="#ffb0a0" opacity=".60"/>
+        <!-- 입 (우물우물) -->
+        <ellipse cx="60" cy="66" rx="7" ry="5" fill="#e8956a"/>
+        <ellipse cx="60" cy="67" rx="5" ry="3.5" fill="#c06040"/>
+        <!-- 음식 한입 -->
+        <circle cx="60" cy="66" r="3.5" fill="#ffe08c" opacity=".7"/>
+        <!-- 왼팔 + 숟가락 -->
+        <path d="M40 74 Q28 68 22 58" stroke="#ffd8b0" stroke-width="8" stroke-linecap="round" fill="none"/>
+        <!-- 숟가락 -->
+        <ellipse cx="20" cy="54" rx="6" ry="4.5" fill="#c8e6ff" stroke="#90c0e8" stroke-width="1.2"/>
+        <line x1="20" y1="58" x2="22" y2="70" stroke="#c8e6ff" stroke-width="3" stroke-linecap="round"/>
+        <!-- 이유식 묻은 숟가락 -->
+        <ellipse cx="20" cy="54" rx="3.5" ry="2.5" fill="#ffe08c" opacity=".7"/>
+        <!-- 오른팔 (그냥 내려놓은) -->
+        <path d="M80 74 Q92 70 96 62" stroke="#ffd8b0" stroke-width="8" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+
+    <!-- 식사 -->
+    <div class="section">
+      <div class="section-title">🥣 오늘 밥은 어떻게 먹었나요?</div>
+
+      <div class="subsec">
+        <div class="q-label">🥩 단백질은 잘 먹었어요?</div>
+        <div class="choice-grid" id="cgProtein">
+          <div class="choice-card active" data-v="0"><span class="c-emoji">😢</span><span class="c-label">못 먹었어요</span></div>
+          <div class="choice-card" data-v="1"><span class="c-emoji">🙂</span><span class="c-label">조금요</span></div>
+          <div class="choice-card" data-v="2"><span class="c-emoji">😄</span><span class="c-label">잘 먹었어요</span></div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="q-label">🥦 채소는 어떻게요?</div>
+        <div class="choice-grid" id="cgVeg">
+          <div class="choice-card active" data-v="0"><span class="c-emoji">😢</span><span class="c-label">못 먹었어요</span></div>
+          <div class="choice-card" data-v="1"><span class="c-emoji">🙂</span><span class="c-label">조금요</span></div>
+          <div class="choice-card" data-v="2"><span class="c-emoji">😄</span><span class="c-label">잘 먹었어요</span></div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="q-label">🌈 다양하게 먹었나요?</div>
+        <div class="choice-grid" id="cgDiv">
+          <div class="choice-card active" data-v="0"><span class="c-emoji">😢</span><span class="c-label">한 가지만</span></div>
+          <div class="choice-card" data-v="1"><span class="c-emoji">🙂</span><span class="c-label">두 세 가지</span></div>
+          <div class="choice-card" data-v="2"><span class="c-emoji">😄</span><span class="c-label">다양하게</span></div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="q-label">🙅 밥 먹기 싫다고 했나요?</div>
+        <div class="choice-grid" id="cgRefusal">
+          <div class="choice-card active" data-v="false"><span class="c-emoji">😊</span><span class="c-label">잘 먹었어요</span></div>
+          <div class="choice-card" data-v="true"><span class="c-emoji">😤</span><span class="c-label">거부했어요</span></div>
+          <div class="choice-card" data-v="null"><span class="c-emoji">🤷</span><span class="c-label">애매해요</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 놀이 -->
+    <div class="section">
+      <div class="section-title">🎮 오늘 어떻게 놀았나요?</div>
+
+      <div class="subsec">
+        <div class="q-label">🎪 어떤 놀이를 했어요?</div>
+        <div class="pill-group" id="playTypePills">
+          <div class="pill" data-v="감각">👁️ 감각</div>
+          <div class="pill" data-v="운동">🏃 운동</div>
+          <div class="pill" data-v="창의">🎨 창의</div>
+          <div class="pill" data-v="언어">💬 언어</div>
+          <div class="pill" data-v="사회">👫 사회</div>
+          <div class="pill" data-v="인지">🧩 인지</div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="q-label">⏱️ 얼마나 집중해서 놀았어요?</div>
+        <div class="choice-grid" id="cgFocus">
+          <div class="choice-card active" data-v="5"><span class="c-emoji">⚡</span><span class="c-label">5분 이하</span></div>
+          <div class="choice-card" data-v="15"><span class="c-emoji">⏰</span><span class="c-label">15분 내외</span></div>
+          <div class="choice-card" data-v="30"><span class="c-emoji">🕐</span><span class="c-label">30분 이상</span></div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="q-label">🔁 같은 놀이를 반복했나요?</div>
+        <div class="choice-grid" id="cgRepeat">
+          <div class="choice-card active" data-v="0"><span class="c-emoji">1️⃣</span><span class="c-label">한 번만</span></div>
+          <div class="choice-card" data-v="2"><span class="c-emoji">2️⃣</span><span class="c-label">두 세 번</span></div>
+          <div class="choice-card" data-v="5"><span class="c-emoji">🔄</span><span class="c-label">계속 반복</span></div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="q-label">🌟 누가 더 주도했어요?</div>
+        <div class="choice-grid" id="cgChildLed">
+          <div class="choice-card active" data-v="0.2"><span class="c-emoji">👨‍👩‍👧</span><span class="c-label">엄마·아빠</span></div>
+          <div class="choice-card" data-v="0.5"><span class="c-emoji">🤝</span><span class="c-label">반반이요</span></div>
+          <div class="choice-card" data-v="0.8"><span class="c-emoji">👶</span><span class="c-label">아기 주도</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 상호작용 -->
+    <div class="section">
+      <div class="section-title">💕 오늘 얼마나 교감했나요?</div>
+
+      <div class="subsec">
+        <div class="q-label">🤗 안아주고 만져줬나요?</div>
+        <div class="choice-grid" id="cgTouch">
+          <div class="choice-card active" data-v="2"><span class="c-emoji">🤏</span><span class="c-label">거의 없음</span></div>
+          <div class="choice-card" data-v="6"><span class="c-emoji">🤝</span><span class="c-label">보통</span></div>
+          <div class="choice-card" data-v="12"><span class="c-emoji">🫂</span><span class="c-label">많이 해줬어요</span></div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="q-label">💬 아기 감정을 말로 표현해줬나요?</div>
+        <div class="choice-grid" id="cgLabel">
+          <div class="choice-card active" data-v="1"><span class="c-emoji">🤐</span><span class="c-label">거의 안 함</span></div>
+          <div class="choice-card" data-v="4"><span class="c-emoji">😊</span><span class="c-label">조금요</span></div>
+          <div class="choice-card" data-v="8"><span class="c-emoji">💬</span><span class="c-label">자주 했어요</span></div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="q-label">👀 같이 뭔가를 바라봤나요?</div>
+        <div class="choice-grid" id="cgJoint">
+          <div class="choice-card active" data-v="2"><span class="c-emoji">😶</span><span class="c-label">거의 없음</span></div>
+          <div class="choice-card" data-v="5"><span class="c-emoji">👁️</span><span class="c-label">보통</span></div>
+          <div class="choice-card" data-v="10"><span class="c-emoji">✨</span><span class="c-label">많이 했어요</span></div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="q-label">🗣️ 아기 반응에 바로 대답해줬나요?</div>
+        <div class="choice-grid" id="cgResp">
+          <div class="choice-card active" data-v="2"><span class="c-emoji">😶</span><span class="c-label">거의 없음</span></div>
+          <div class="choice-card" data-v="6"><span class="c-emoji">🗣️</span><span class="c-label">보통</span></div>
+          <div class="choice-card" data-v="12"><span class="c-emoji">💡</span><span class="c-label">많이 했어요</span></div>
+        </div>
+      </div>
+
+      <div class="subsec">
+        <div class="q-label">😐 오늘 표정이 많았나요?</div>
+        <div class="choice-grid" id="cgFlat">
+          <div class="choice-card active" data-v="false"><span class="c-emoji">😊</span><span class="c-label">표정 풍부</span></div>
+          <div class="choice-card" data-v="true"><span class="c-emoji">😐</span><span class="c-label">무표정이요</span></div>
+          <div class="choice-card" data-v="null"><span class="c-emoji">🤷</span><span class="c-label">잘 모르겠어요</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">💌 오늘 하루 한마디</div>
+      <textarea id="parentNote" placeholder="오늘 육아하면서 느낀 점, 걱정되는 것, 칭찬하고 싶은 것 자유롭게 적어주세요 ☺️"></textarea>
+    </div>
+
+    <div class="section">
+      <div class="section-title">❓ 코치에게 물어보고 싶은 것</div>
+      <input type="text" id="parentQuery" placeholder="궁금한 점을 적어주세요 (예: 이유식 시작 시기, 수면 패턴 등)" />
+    </div>
+
+    <div id="errorBox2" class="error-box"></div>
+
+    <div class="btn-row">
+      <button class="btn ghost" onclick="goStep(1)">← 이전</button>
+      <button class="btn primary" onclick="submitRecommend()">코칭 받기 🌸</button>
+    </div>
+  </div>
+
+  <!-- ════ STEP 3 ════ -->
+  <div class="page" id="page3">
+
+    <!-- SVG 캐릭터: 별 들고 웃는 아기 -->
+    <div class="char-wrap">
+      <svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- 배경 원 -->
+        <circle cx="60" cy="60" r="56" fill="#fff0e8"/>
+        <!-- 반짝이는 별들 -->
+        <path d="M20 28 L21.5 24 L23 28 L27 29.5 L23 31 L21.5 35 L20 31 L16 29.5Z" fill="#ffb347"/>
+        <path d="M95 22 L96 19 L97 22 L100 23 L97 24 L96 27 L95 24 L92 23Z" fill="#ff8c69"/>
+        <path d="M14 75 L15 72.5 L16 75 L18.5 76 L16 77 L15 79.5 L14 77 L11.5 76Z" fill="#ffd700" opacity=".7"/>
+        <!-- 몸통 -->
+        <ellipse cx="60" cy="90" rx="20" ry="14" fill="#ffcba4"/>
+        <!-- 얼굴 -->
+        <ellipse cx="60" cy="60" rx="26" ry="25" fill="#ffd8b0"/>
+        <!-- 귀 -->
+        <ellipse cx="35" cy="60" rx="6" ry="7" fill="#ffd8b0"/>
+        <ellipse cx="85" cy="60" rx="6" ry="7" fill="#ffd8b0"/>
+        <ellipse cx="35" cy="60" rx="3.5" ry="4.5" fill="#ffb38a"/>
+        <ellipse cx="85" cy="60" rx="3.5" ry="4.5" fill="#ffb38a"/>
+        <!-- 머리카락 -->
+        <ellipse cx="60" cy="38" rx="22" ry="12" fill="#5c3d1e"/>
+        <ellipse cx="44" cy="42" rx="8" ry="6" fill="#5c3d1e"/>
+        <ellipse cx="76" cy="42" rx="8" ry="6" fill="#5c3d1e"/>
+        <!-- 눈 (반달 — 기쁨) -->
+        <path d="M49 56 Q52 51 55 56" stroke="#3d2c1e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <path d="M65 56 Q68 51 71 56" stroke="#3d2c1e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <!-- 볼 치크 -->
+        <ellipse cx="42" cy="65" rx="9" ry="6" fill="#ffb0a0" opacity=".60"/>
+        <ellipse cx="78" cy="65" rx="9" ry="6" fill="#ffb0a0" opacity=".60"/>
+        <!-- 입 (활짝 웃음) -->
+        <path d="M49 70 Q60 82 71 70" stroke="#c06040" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <!-- 왼팔 + 큰 별 -->
+        <path d="M40 80 Q26 72 20 60" stroke="#ffd8b0" stroke-width="8" stroke-linecap="round" fill="none"/>
+        <!-- 큰 별 -->
+        <path d="M18 52 L20.5 44 L23 52 L31 54.5 L23 57 L20.5 65 L18 57 L10 54.5Z" fill="#ffd700"/>
+        <path d="M18 52 L20.5 44 L23 52 L31 54.5 L23 57 L20.5 65 L18 57 L10 54.5Z" fill="#ffb347" opacity=".4"/>
+        <!-- 오른팔 -->
+        <path d="M80 80 Q94 74 98 64" stroke="#ffd8b0" stroke-width="8" stroke-linecap="round" fill="none"/>
+        <!-- 왕관 -->
+        <path d="M44 40 L48 30 L60 38 L72 30 L76 40Z" fill="#ffb347"/>
+        <circle cx="48" cy="30" r="3.5" fill="#ff8c69"/>
+        <circle cx="60" cy="36" r="3.5" fill="#ff8c69"/>
+        <circle cx="72" cy="30" r="3.5" fill="#ff8c69"/>
+      </svg>
+    </div>
+
+    <div style="text-align:center; background:linear-gradient(135deg,rgba(255,140,105,.12),rgba(255,179,71,.10)); border:1.5px solid rgba(255,140,105,.28); border-radius:var(--radius); padding:18px;">
+      <div style="font-size:17px;font-weight:900;color:var(--point);">오늘의 코칭이 준비됐어요! 🎉</div>
+      <div style="font-size:12px;font-weight:600;color:var(--muted);margin-top:4px;">아기와 함께하는 하루를 응원해요 💕</div>
+    </div>
+
+    <div id="resultSection"></div>
+    <div id="errorBox3" class="error-box"></div>
+
+    <button class="btn ghost" onclick="goStep(1)">처음으로 돌아가기 🏠</button>
+  </div>
+
+</div>
+
+<script>
+// ── 상태 ──────────────────────────────────────────
+let ageMonths = 6;
+let weightKg  = 7.5;
+
+const stepLabels = ['', '1/3 &nbsp;아기 정보 👶', '2/3 &nbsp;오늘 하루 🥣', '3/3 &nbsp;코칭 결과 🌸'];
+
+// ── 스텝퍼 ────────────────────────────────────────
+function stepAge(d) {
+  ageMonths = Math.max(0, Math.min(36, ageMonths + d));
+  document.getElementById('valAge').textContent = ageMonths;
+}
+function stepWeight(d) {
+  weightKg = Math.round((weightKg + d * 0.1) * 10) / 10;
+  weightKg = Math.max(1.0, Math.min(25.0, weightKg));
+  document.getElementById('valWeight').textContent = weightKg.toFixed(1);
+}
+
+// ── Pill 토글 ────────────────────────────────────
+document.querySelectorAll('#allergyPills .pill').forEach(p => {
+  p.addEventListener('click', () => {
+    if (p.dataset.v === '없음') {
+      document.querySelectorAll('#allergyPills .pill').forEach(x => x.classList.remove('active'));
+      p.classList.add('active');
+    } else {
+      document.querySelector('#allergyPills .pill[data-v="없음"]')?.classList.remove('active');
+      p.classList.toggle('active');
+    }
+  });
+});
+document.querySelectorAll('#playTypePills .pill').forEach(p => {
+  p.addEventListener('click', () => p.classList.toggle('active'));
+});
+
+// ── 큰 카드 선택 ─────────────────────────────────
+function initChoiceGrid(id) {
+  const cards = document.querySelectorAll(`#${id} .choice-card`);
+  cards.forEach(c => {
+    c.addEventListener('click', () => {
+      cards.forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+    });
+  });
+}
+['cgProtein','cgVeg','cgDiv','cgRefusal','cgFocus','cgRepeat',
+ 'cgChildLed','cgTouch','cgLabel','cgJoint','cgResp','cgFlat'].forEach(initChoiceGrid);
+
+// ── 선택값 읽기 ───────────────────────────────────
+function getChoice(id) {
+  const el = document.querySelector(`#${id} .choice-card.active`);
+  if (!el) return null;
+  const v = el.dataset.v;
+  if (v === 'true')  return true;
+  if (v === 'false') return false;
+  if (v === 'null')  return null;
+  return isNaN(v) ? v : Number(v);
+}
+function getPills(id) {
+  return [...document.querySelectorAll(`#${id} .pill.active`)].map(p => p.dataset.v);
+}
+
+// ── 스텝 이동 ─────────────────────────────────────
+function goStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById(`page${i}`).classList.toggle('active', i === n);
+    const sd = document.getElementById(`sd${i}`);
+    sd.classList.remove('active','done');
+    if (i < n)       sd.classList.add('done');
+    else if (i === n) sd.classList.add('active');
+  });
+  document.getElementById('stepText').innerHTML = stepLabels[n];
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── API 호출 ──────────────────────────────────────
+async function submitRecommend() {
+  const errBox = document.getElementById('errorBox2');
+  errBox.classList.remove('show');
+
+  const allergies = getPills('allergyPills').filter(v => v !== '없음');
+  const playTypes = getPills('playTypePills');
+
+  const payload = {
+    age_months:             ageMonths,
+    weight_kg:              weightKg,
+    allergies:              allergies,
+    notes:                  document.getElementById('inputNotes').value.trim(),
+    protein_count_3d:       getChoice('cgProtein'),
+    vegetable_count_3d:     getChoice('cgVeg'),
+    food_diversity_3d:      getChoice('cgDiv'),
+    meal_refusal:           getChoice('cgRefusal'),
+    reaction_flags:         [],
+    play_types:             playTypes,
+    focus_minutes:          getChoice('cgFocus'),
+    repeat_count:           getChoice('cgRepeat'),
+    child_led_ratio:        getChoice('cgChildLed'),
+    refusal:                getChoice('cgRefusal'),
+    parent_note:            document.getElementById('parentNote').value.trim(),
+    touch_count:            getChoice('cgTouch'),
+    labeling_count:         getChoice('cgLabel'),
+    joint_attention_count:  getChoice('cgJoint'),
+    responsive_turns:       getChoice('cgResp'),
+    flat_response:          getChoice('cgFlat'),
+    parent_query:           document.getElementById('parentQuery').value.trim(),
+  };
+
+  document.getElementById('loadingOverlay').classList.add('show');
+
+  try {
+    const res = await fetch('http://127.0.0.1:8000/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
+    const data = await res.json();
+    renderResult(data);
+    goStep(3);
+  } catch (e) {
+    errBox.textContent = `⚠️ ${e.message || '연결에 실패했어요. 서버를 확인해주세요.'}`;
+    errBox.classList.add('show');
+  } finally {
+    document.getElementById('loadingOverlay').classList.remove('show');
+  }
+}
+
+// ── 결과 렌더 ─────────────────────────────────────
+function renderResult(data) {
+  const sec = document.getElementById('resultSection');
+  sec.innerHTML = '';
+
+  // Nudge
+  const nudgeList = data.nudge || (data.nudge_message ? [data.nudge_message] : []);
+  const nudgeHTML = nudgeList.length
+    ? nudgeList.map(n => `<div class="nudge-msg">${escHtml(String(n))}</div>`).join('')
+    : `<div class="nudge-empty">오늘도 정말 잘하셨어요 ☺️</div>`;
+  sec.insertAdjacentHTML('beforeend', `
+    <div class="nudge-banner">
+      <div class="nudge-icon">💡</div>
+      <div>
+        <div class="nudge-title">🌸 오늘의 육아 넛지</div>
+        ${nudgeHTML}
+      </div>
+    </div>
+  `);
+
+  // 결과 카드 (이유식=연두, 놀이=연파랑, 발달=연보라, 설명=연노랑)
+  const cards = [
+    { cls:'spoon',   icon:'🥄', title:'이유식 추천',   key:'spoon',       fallback:'이유식 추천 정보가 없어요.' },
+    { cls:'play',    icon:'🎈', title:'놀이 추천',     key:'play',        fallback:'놀이 추천 정보가 없어요.' },
+    { cls:'growth',  icon:'📏', title:'발달 코칭',     key:'growth',      fallback:'발달 코칭 정보가 없어요.' },
+    { cls:'explain', icon:'💜', title:'코치 설명',     key:'explanation', fallback:'설명 정보가 없어요.' },
+  ];
+
+  const grid = document.createElement('div');
+  grid.className = 'result-cards';
+
+  cards.forEach(({ cls, icon, title, key, fallback }) => {
+    const raw = data[key] || data[`${key}_recommendation`] || data[`${key}_message`] || null;
+    let body = '';
+    if (!raw) {
+      body = `<span style="color:var(--muted)">${fallback}</span>`;
+    } else if (typeof raw === 'string') {
+      body = escHtml(raw);
+    } else if (Array.isArray(raw)) {
+      body = raw.map(r => `<strong>• </strong>${escHtml(String(r))}`).join('<br>');
+    } else if (typeof raw === 'object') {
+      body = Object.entries(raw).map(([k,v]) =>
+        `<strong>${escHtml(k)}:</strong> ${escHtml(String(v))}`
+      ).join('<br>');
+    }
+    grid.insertAdjacentHTML('beforeend', `
+      <div class="result-card ${cls}">
+        <div class="rc-head">
+          <div class="rc-icon">${icon}</div>
+          <div class="rc-title">${title}</div>
+        </div>
+        <div class="rc-body">${body}</div>
+      </div>
+    `);
+  });
+
+  sec.appendChild(grid);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
