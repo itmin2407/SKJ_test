@@ -26,6 +26,12 @@ def create_app() -> FastAPI:
     def index() -> str:
         return get_ui_html()
 
+    @app.get("/mom", response_class=HTMLResponse)
+    def mom() -> str:
+        html_path = os.path.join(os.path.dirname(__file__), "ui", "babycoach_mom.html")
+        with open(html_path, encoding="utf-8") as f:
+            return f.read()
+
     @app.get("/health")
     def health() -> dict:
         # Ensure graph can compile at runtime (smoke check).
